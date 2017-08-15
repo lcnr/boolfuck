@@ -57,6 +57,9 @@ impl<'a> Program<'a> {
                 EOF => break 'running,
             }
         }
+        if self.write_ptr != 0b00_00_00_01 {
+            print!("{}", char::from(self.write));
+        }
 
         if present {
             println!("\n\nThese are all cells after the program has finished:");
