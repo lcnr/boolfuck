@@ -1,8 +1,8 @@
 [package]
 name = "boolfuck"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Nijaitchy/Sleeping_Panda <sleeping_panda@outlook.de>"]
-description = "A simple unoptimized boolfuck interpreter, which can convert brainfuck code."
+description = "A simple unoptimized boolfuck interpreter which can convert brainfuck code."
 license = "MIT/Apache-2.0"
 keywords = ["brainfuck", "interpreter", "compiler", "esolang"]
 repository = "https://github.com/Nijaitchy/boolfuck"
