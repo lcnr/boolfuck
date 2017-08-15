@@ -2,5 +2,8 @@
 name = "boolfuck"
 version = "0.1.0"
 authors = ["Nijaitchy/Sleeping_Panda <sleeping_panda@outlook.de>"]
-
-[dependencies]
+description = "A simple unoptimized boolfuck interpreter, which can convert brainfuck code."
+license = "MIT/Apache-2.0"
+keywords = ["brainfuck", "interpreter", "compiler", "esolang"]
+categories = [""]
+repository = "https://github.com/Nijaitchy/boolfuck"

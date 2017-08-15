@@ -1,4 +1,4 @@
-//! A rather slow [`Boolfuck`] interpreter, in case you want help me make this more efficient go to the corresponding github page.
+//! A rather slow [`Boolfuck`] interpreter, in case you want to help me make this more efficient go to the [corresponding github page].
 //!
 //! For tips/tutorials concerning [`Boolfuck`] visit the official homepage. It is also possible to translate [`Brainfuck`] in [`Boolfuck`] code with this crate.
 //!
@@ -11,16 +11,23 @@
 //! * The commands `,` and `;` both work in little-endian order.
 //!
 //! * This crate is a **a lot** faster when run with `--release`!
+//!
+//!
+//! # Remarks
+//!
+//! * *If you have created a better [`boolfuck`] interpreter I would not mind to transfer this name to you.*
 //! [`Boolfuck`]:http://samuelhughes.com/boof/
 //! [`Brainfuck`]:https://en.wikipedia.org/wiki/Brainfuck
 //! [`The Lost Kingdom`]:http://web.archive.org/web/20111031121638/http://jonripley.com/i-fiction/games/LostKingdomBF.html
+//! [corresponding github page]:https://github.com/Nijaitchy/boolfuck/
 
 
 mod token;
 mod program;
 
-use token::Token;
-pub use token::{ToString, ToToken};
+pub use token::Token as Token;
+pub use token::ToString as ToString;
+pub use token::ToToken as ToToken;
 use program::Program;
 
 /// A simple struct which contains `boolfuck` code and can run that code.

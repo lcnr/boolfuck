@@ -1,3 +1,4 @@
+/// An enum with all possible `boolfuck` commands and an `end of file` token.
 #[derive(PartialEq,Copy,Clone)]
 pub enum Token {
     MoveLeft,
