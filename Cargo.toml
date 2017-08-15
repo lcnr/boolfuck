@@ -1,0 +1,6 @@
+[package]
+name = "boolfuck"
+version = "0.1.0"
+authors = ["Nijaitchy/Sleeping_Panda <sleeping_panda@outlook.de>"]
+
+[dependencies]
