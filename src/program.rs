@@ -1,13 +1,11 @@
 use token::Token;
 use std::collections::VecDeque;
-use Token::*;
 
-
-
-pub struct Program<'a> {
-    source: &'a Vec<Token>,
+pub struct Program {
+    source: Vec<Token>,
     cells: VecDeque<u8>,
     input: VecDeque<u8>,
+    stack: Vec<usize>,
 
     write: u8,
 
@@ -17,79 +15,45 @@ pub struct Program<'a> {
     write_ptr: u8,
 }
 
-impl<'a> Program<'a> {
-    pub fn new(source: &'a Vec<Token>) -> Self {
+impl Program {
+    pub(crate) fn new(source: Vec<Token>) -> Self {
         let mut cells = VecDeque::new();
         cells.push_back(0b00_00_00_00);
-
-        let input = VecDeque::new();
-        let write: u8 = 0b00_00_00_00;
-
-        let source_ptr = 0;
-        let cells_ptr = 0;
-        let read_ptr = 0b10_00_00_00;
-        let write_ptr = 0b00_00_00_01;
 
         Program {
             source,
             cells,
-            input,
+            input: VecDeque::new(),
+            stack: Vec::new(),
 
-            write,
+            write: 0,
 
-            source_ptr,
-            cells_ptr,
-            read_ptr,
-            write_ptr,
+            source_ptr: 0,
+            cells_ptr: 0,
+            read_ptr: 0b10_00_00_00,
+            write_ptr: 0b00_00_00_01
         }
     }
 
-    pub fn run(&mut self, present: bool) {
-        'running: loop {
-            match self.source[self.source_ptr] {
-                MoveLeft => self.move_left(),
-                MoveRight => self.move_right(),
-                BracketLeft => self.bracket_left(),
-                BracketRight => self.bracket_right(),
-                Read => self.read(),
-                Write => self.write(),
-                Flip => self.flip(),
-                EOF => break 'running,
+    pub fn tape(&self) -> (&[u8], &[u8]) {
+        self.cells.as_slices()
+    }
+
+    pub fn run(&mut self) {
+        while let Some(tok) = self.source.get(self.source_ptr).cloned() {
+            match tok {
+                Token::MoveLeft => self.move_left(),
+                Token::MoveRight => self.move_right(),
+                Token::BracketLeft => self.bracket_left(),
+                Token::BracketRight => self.bracket_right(),
+                Token::Read => self.read(),
+                Token::Write => self.write(),
+                Token::Flip => self.flip(),
             }
         }
+
         if self.write_ptr != 0b00_00_00_01 {
             print!("{}", char::from(self.write));
-        }
-
-        if present {
-            println!("\n\nThese are all cells after the program has finished:");
-
-            let mut counter = 0;
-            for item in self.cells.iter().rev() {
-                let mut cell = 0b00_00_00_01;
-                'cell_iter: loop {
-                    if counter % 8 == 0 {
-                        print!("\n");
-                    }
-                    else if counter % 4 == 0 {
-                        print!("- ");
-                    }
-                    counter += 1;
-
-                    if item & cell != 0 {
-                        print!("1 ");
-                    }
-                    else {
-                        print!("0 ");
-                    }
-                    if cell == 0b10_00_00_00 {
-                        break 'cell_iter;
-                    }
-                    else {
-                        cell = cell << 1;
-                    }
-                }
-            }
         }
     }
 
@@ -116,7 +80,8 @@ impl<'a> Program<'a> {
     }
 
     fn bracket_left(&mut self) {
-        if self.read_cell() {
+        if self.get_cell() {
+            self.stack.push(self.source_ptr);
             self.source_ptr += 1;
         }
         else {
@@ -137,19 +102,7 @@ impl<'a> Program<'a> {
     }
 
     fn bracket_right(&mut self) {
-        let mut open_brackets: u8 = 1;
-
-        while open_brackets != 0 {
-            self.source_ptr -= 1;
-
-            use Token::*;
-            match self.source[self.source_ptr] {
-                BracketLeft => open_brackets -= 1,
-                BracketRight => open_brackets += 1,
-                _ => (),
-            }
-        }
-        //self.source_ptr += 1;
+        self.source_ptr = self.stack.pop().unwrap();
     }
 
     fn read(&mut self) {
@@ -161,7 +114,7 @@ impl<'a> Program<'a> {
             while self.input.is_empty() {
                 use std::io::Read;
                 self.input.push_back(::std::io::stdin().bytes().next().and_then(|result| result.ok()).unwrap());
-                if *self.input.back().unwrap() == 10 {
+                if *self.input.back().unwrap() == '\n' as u8 {
                     self.input.pop_back();
                 }
             }
@@ -174,17 +127,17 @@ impl<'a> Program<'a> {
 
         let input = self.input.front().expect("Error inside of the 'read' function").clone();
         if self.read_ptr & input != 0 {
-            self.one_cell();
+            self.set_cell(true);
         }
         else {
-            self.zero_cell();
+            self.set_cell(false);
         }
     }
 
     fn write(&mut self) {
         self.source_ptr += 1;
 
-        if self.read_cell() {
+        if self.get_cell() {
             self.write |= self.write_ptr;
         }
 
@@ -207,27 +160,27 @@ impl<'a> Program<'a> {
 
 
 
-    fn read_cell(&self) -> bool {
+   
+    #[inline]
+    fn flip_cell(&mut self) {
+        let v = !self.get_cell();
+        self.set_cell(v);
+    }
+
+    #[inline]
+    fn set_cell(&mut self, v: bool) {
+        let item = 0b00_00_00_01 << self.cells_ptr % 8;
+        if v {
+            self.cells[self.cells_ptr/8] |= item;
+        }
+        else {
+            self.cells[self.cells_ptr/8] &= !item;
+        }
+    }
+
+     fn get_cell(&self) -> bool {
         let item = 0b00_00_00_01 << self.cells_ptr % 8;
 
         self.cells[self.cells_ptr/8] & item != 0
-    }
-
-    fn flip_cell(&mut self) {
-        let item = 0b00_00_00_01 << self.cells_ptr % 8;
-
-        self.cells[self.cells_ptr/8] ^= item;
-    }
-
-    fn one_cell(&mut self) {
-        let item = 0b00_00_00_01 << self.cells_ptr % 8;
-
-        self.cells[self.cells_ptr/8] |= item;
-    }
-
-    fn zero_cell(&mut self) {
-        let item = 0b00_00_00_01 << self.cells_ptr % 8;
-
-        self.cells[self.cells_ptr/8] &= !item;
     }
 }

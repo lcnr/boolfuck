@@ -1,5 +1,7 @@
+use std::fmt;
+
 /// An enum with all possible `boolfuck` commands and an `end of file` token.
-#[derive(PartialEq,Copy,Clone)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum Token {
     MoveLeft,
     MoveRight,
@@ -8,73 +10,26 @@ pub enum Token {
     Read,
     Write,
     Flip,
-    EOF,
-}
-
-/// Takes `&self` and creates a new independent string.
-pub trait ToString {
-    fn to_string(&self) -> String;
-}
-
-/// Takes `&self` and creates a new independent `Vec<Token>`.
-pub trait ToToken {
-    fn to_token(&self) -> Vec<Token>;
 }
 
 
-impl ToString for Vec<Token> {
-    fn to_string(&self) -> String {
-        let mut    res = String::new();
-        for item in self.iter() {
-            use token::Token::*;
-            match *item {
-                MoveLeft => res.push('<'),
-                MoveRight => res.push('>'),
-                BracketLeft => res.push('['),
-                BracketRight => res.push(']'),
-                Read => res.push(','),
-                Write => res.push(';'),
-                Flip => res.push('+'),
-                EOF => (),
-            }
-        }
-        res
+impl fmt::Debug for Token {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "Token {{ {} }}", self)
     }
 }
 
-impl ToToken for str {
-    fn to_token(&self) -> Vec<Token> {
-        let mut tokens = Vec::new();
-        let mut brackets: i32 = 0;
-
-        for character in self.chars() {
-            match character {
-                '<' => tokens.push(Token::MoveLeft),
-                '>' => tokens.push(Token::MoveRight),
-                '[' => { brackets += 1; tokens.push(Token::BracketLeft); },
-                ']' => {
-                    if brackets > 0 {
-                        brackets -= 1;
-                        tokens.push(Token::BracketRight);
-                    }
-                    else {
-                        panic!("Found a right bracket without a preceding left one!");
-                    }
-                },
-                ',' => tokens.push(Token::Read),
-                ';' => tokens.push(Token::Write),
-                '+' => tokens.push(Token::Flip),
-                _ => (),
-            }
-        }
-        tokens.push(Token::EOF);
-
-
-        if brackets != 0 {
-            panic!("There are currently {} bracket(s) without a matching partner!",brackets);
-        }
-        else {
-            tokens
-        }
+impl fmt::Display for Token {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use Token::*;
+        write!(fmt, "{}", match self {
+            MoveLeft => '>',
+            MoveRight => '<',
+            BracketLeft => '[',
+            BracketRight => ']',
+            Read => ',',
+            Write => ';',
+            Flip => '+'
+        })
     }
 }

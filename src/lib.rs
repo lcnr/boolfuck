@@ -1,6 +1,6 @@
-//! A rather slow [`Boolfuck`] interpreter, in case you want to help me make this more efficient go to the [corresponding github page].
+//! A simple [`Boolfuck`] interpreter. The code is available at [github].
 //!
-//! For tips/tutorials concerning [`Boolfuck`] visit the official homepage. It is also possible to translate [`Brainfuck`] in [`Boolfuck`] code with this crate.
+//! For tips/tutorials concerning [`Boolfuck`] visit the official homepage. It is also possible to translate [`Brainfuck`] in [`Source`] code with this crate.
 //!
 //! # Details
 //!
@@ -9,81 +9,72 @@
 //! This causes problems with other programs which rely on `null terminated` strings or the `end of line` character.
 //!
 //! * The commands `,` and `;` both work in little-endian order.
-//!
-//! * This crate is a **a lot** faster when run with `--release`!
-//!
-//!
-//! # Remarks
-//!
-//! * *If you have created a better [`boolfuck`] interpreter I would not mind to transfer this name to you.*
 //! [`Boolfuck`]:http://samuelhughes.com/boof/
 //! [`Brainfuck`]:https://en.wikipedia.org/wiki/Brainfuck
 //! [`The Lost Kingdom`]:http://web.archive.org/web/20111031121638/http://jonripley.com/i-fiction/games/LostKingdomBF.html
-//! [corresponding github page]:https://github.com/Nijaitchy/boolfuck/
+//! [github]:https://github.com/Nijaitchy/boolfuck/
 
 
 mod token;
 mod program;
 
 pub use token::Token as Token;
-pub use token::ToString as ToString;
-pub use token::ToToken as ToToken;
 use program::Program;
 
-/// A simple struct which contains `boolfuck` code and can run that code.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use boolfuck::Boolfuck;
-///
-/// let program = Boolfuck::new(",>,>,>,>,>,>,>,<<<<<<<;>;>;>;>;>;>;>;");
-///
-/// program.run(false);
-/// ```
-pub struct Boolfuck {
+/// A simple struct which contains compilable `boolfuck` code.
+pub struct Source {
     source: Vec<Token>,
 }
 
-impl Boolfuck {
-    /// Creates a new instance of `Boolfuck` taking a `&str` as input, this string is used as the source code.
+impl Source {
+    /// Creates a new instance of `Source` from `source`.
     ///
     /// # Panic
     ///
     /// In case there are unclosed brackets the program `panics`!
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use boolfuck::Boolfuck;
-    ///
-    /// let program = Boolfuck::new(",>,>,>,>,>,>,>,<<<<<<<;>;>;>;>;>;>;>;");
-    ///
-    /// program.run(false);
-    /// ```
     pub fn new(source: &str) -> Self {
-        Boolfuck {
-            source: source.to_token(),
+        let mut tokens = Vec::new();
+        let mut brackets: i32 = 0;
+
+        for character in source.chars() {
+            match character {
+                '<' => tokens.push(Token::MoveLeft),
+                '>' => tokens.push(Token::MoveRight),
+                '[' => { brackets += 1; tokens.push(Token::BracketLeft); },
+                ']' => {
+                    if brackets > 0 {
+                        brackets -= 1;
+                        tokens.push(Token::BracketRight);
+                    }
+                    else {
+                        panic!("Found a right bracket without a preceding left one!");
+                    }
+                },
+                ',' => tokens.push(Token::Read),
+                ';' => tokens.push(Token::Write),
+                '+' => tokens.push(Token::Flip),
+                _ => (),
+            }
+        }
+
+
+        if brackets != 0 {
+            panic!("There are currently {} bracket(s) without a matching partner!",brackets);
+        }
+        else {
+            Source {
+                source: tokens,
+            }
         }
     }
 
-    /// Creates a new instance of `Boolfuck` taking a string of `Brainfuck` code as input, this string gets converted to `Boolfuck`.
+    /// Creates a new instance of `Source` taking a string of `Brainfuck` code as input, this string gets converted to `Source`.
     ///
     /// This is completely unoptimized!
     ///
     /// # Panic
     ///
     /// In case there are unclosed brackets the program `panics`!
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use boolfuck::Boolfuck;
-    ///
-    /// let program = Boolfuck::from_brainfuck(",.");
-    ///
-    /// program.run(false);
-    /// ```
     pub fn from_brainfuck(source: &str) -> Self {
         let mut boolfuck_source = String::new();
 
@@ -104,71 +95,79 @@ impl Boolfuck {
         Self::new(&boolfuck_source)
     }
 
-    /// Runs the code saved inside of the struct, in case present is true the value of all cells is shown after the program has finished.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use boolfuck::Boolfuck;
-    ///
-    /// let program = Boolfuck::new(",>,>,>,>,>,>,>,<<<<<<<;>;>;>;>;>;>;>;");
-    ///
-    /// program.run(true);
-    /// ```
-    pub fn run(&self, present: bool) {
-        Program::new(&self.source).run(present);
+    /// Creates a program from `self`.
+    pub fn gen(self) -> Program {
+        Program::new(self.source)
     }
 
-    /// Returns the representation of `Boolfuck` code used in this struct, this code can be converted to string using `to_string()`
-    ///
-    /// and then get used a a input for another `Boolfuck` instance.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use boolfuck::Boolfuck;
-    /// use boolfuck::ToString;
-    ///
-    /// let program = Boolfuck::new(",>,>,>,>,>,>,>,<<<<<<<;>;>;>;>;>;>;>;");
-    ///
-    /// let program = Boolfuck::new(&program.get_tokens().to_string());
-    ///
-    /// program.run(true);
-    /// ```
-    pub fn get_tokens(&self) -> &Vec<Token> {
-        &self.source
+    pub fn len(&self) -> usize {
+        self.source.len()
     }
 
-}
+    /// removes all simple duplicates
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// # use boolfuck::Source;
+    /// let mut source = Source::new("[]++ >++< <>");
+    /// source.dedup();
+    /// assert_eq!(source.len(), 0);
+    /// 
+    /// let mut source = Source::new("+[]++[+,;++++>>>>><<<][]");
+    /// source.dedup();
+    /// assert_eq!(source.len(), 3);
+    /// 
+    /// ```
+    pub fn dedup(&mut self) {
+        let mut iter = std::mem::replace(&mut self.source, Vec::new()).into_iter();
 
-impl std::fmt::Debug for Boolfuck {
-    /// Displays the used source code.
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut output = String::new();
-
-        for token in self.source.iter() {
-            use Token::*;
-            match *token {
-                MoveLeft => output.push('<'),
-                MoveRight => output.push('>'),
-                BracketLeft => output.push('['),
-                BracketRight => output.push(']'),
-                Read => output.push(','),
-                Write => output.push(';'),
-                Flip => output.push('+'),
-                EOF => (),
+        let mut prev_tok = None;
+        while let Some(tok) = iter.next() {
+            match (prev_tok, tok) {
+                (Some(Token::Flip), Token::Flip) |
+                (Some(Token::MoveLeft), Token::MoveRight) |
+                (Some(Token::MoveRight), Token::MoveLeft) => prev_tok = self.source.pop(),
+                (Some(Token::BracketRight), Token::BracketLeft) |
+                (None, Token::BracketLeft) => {
+                    Self::skip_to_matching(&mut iter);
+                }
+                (prev, tok) => {
+                    if let Some(prev) = prev {
+                        self.source.push(prev);
+                    }
+                    prev_tok = Some(tok);
+                }
             }
         }
+        
+        if let Some(prev) = prev_tok {
+            self.source.push(prev);
+        }
+    }
 
-        write!(f, "Boolfuck: {{ {} }}", output)
+    fn skip_to_matching(iter: &mut impl Iterator<Item=Token>) {
+        let mut brackets = 1;
+        while brackets != 0 {
+            match iter.next() {
+                Some(Token::BracketLeft) => brackets += 1,
+                Some(Token::BracketRight) => brackets -= 1,
+                Some(_) => (),
+                None => unreachable!(),
+            }
+        }
     }
 }
 
+impl std::fmt::Debug for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut output = String::with_capacity(self.source.len());
 
+        for token in self.source.iter() {
+            use std::fmt::Write;
+            write!(output, "{}", token)?
+        }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
+        write!(f, "Source: {{ \"{}\" }}", output)
     }
 }
